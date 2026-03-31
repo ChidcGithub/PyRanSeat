@@ -88,6 +88,8 @@ jobs:
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         name: PyRanSeat ${{ steps.info.outputs.tag_name }}
         files: ./dist/PyRanSeat.exe
@@ -114,5 +116,3 @@ jobs:
           Download `PyRanSeat.exe` from the assets below.
           
           **Usage**: Double-click to run, the server will start at `http://127.0.0.1:5000`
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
