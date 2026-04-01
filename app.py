@@ -5,6 +5,7 @@ Features: Constraint seating, front-back swap, group rotation, history, student 
 """
 
 import os
+import sys
 import json
 import random
 import threading
@@ -14,8 +15,17 @@ from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
-# Data file paths
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+# Data file paths - handle PyInstaller packaging
+def get_app_dir():
+    """Get the application directory (works for both dev and PyInstaller)"""
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable (PyInstaller)
+        return os.path.dirname(sys.executable)
+    else:
+        # Running in development mode
+        return os.path.dirname(os.path.abspath(__file__))
+
+DATA_DIR = os.path.join(get_app_dir(), 'data')
 DATA_FILE = os.path.join(DATA_DIR, 'seat_data.json')
 HISTORY_FILE = os.path.join(DATA_DIR, 'seat_history.json')
 
