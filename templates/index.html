@@ -2049,6 +2049,39 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Analysis Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="panel-title-text">Analysis</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline" id="compareSnapshotBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                            Snapshot Compare
+                        </button>
+                        <button class="btn btn-outline" id="printViewBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 6 2 18 2 18 9"/>
+                                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                                <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                            Print View
+                        </button>
+                        <button class="btn btn-outline" id="heatmapBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                                <circle cx="12" cy="12" r="4"/>
+                            </svg>
+                            Position Heatmap
+                        </button>
+                    </div>
+                </div>
             </aside>
         </div>
         
@@ -2099,6 +2132,192 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('groupRotateModal')">Cancel</button>
                 <button class="btn btn-primary" id="confirmGroupRotate">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snapshot Compare Modal -->
+    <div class="modal-overlay" id="compareModal">
+        <div class="modal" style="max-width: 600px;">
+            <h3 class="modal-title">Snapshot Compare</h3>
+            <p style="font-size: var(--text-sm); color: var(--fg-muted); margin-bottom: var(--space-4);">Select two history snapshots to compare changes</p>
+            
+            <div class="config-row">
+                <label style="min-width: 80px;">Snapshot 1</label>
+                <select id="compareSelect1" class="select" style="flex:1;">
+                    <option value="">Select first snapshot</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label style="min-width: 80px;">Snapshot 2</label>
+                <select id="compareSelect2" class="select" style="flex:1;">
+                    <option value="">Select second snapshot</option>
+                </select>
+            </div>
+            
+            <div id="compareResult" style="margin-top: var(--space-4); display: none;">
+                <div class="compare-summary" style="background: var(--bg-subtle); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
+                    <div style="display: flex; gap: var(--space-4); font-size: var(--text-sm);">
+                        <span><strong id="compareMoved">0</strong> moved</span>
+                        <span><strong id="compareAdded">0</strong> added</span>
+                        <span><strong id="compareRemoved">0</strong> removed</span>
+                    </div>
+                </div>
+                <div id="compareChanges" style="max-height: 200px; overflow-y: auto; font-size: var(--text-sm);"></div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('compareModal')">Close</button>
+                <button class="btn btn-primary" id="runCompareBtn">Compare</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print View Modal -->
+    <div class="modal-overlay" id="printModal">
+        <div class="modal" style="max-width: 500px;">
+            <h3 class="modal-title">Print Settings</h3>
+            
+            <div class="config-row">
+                <label style="min-width: 80px;">Title</label>
+                <input type="text" id="printTitle" class="input" placeholder="Classroom Seating Chart" value="Classroom Seating Chart">
+            </div>
+            <div class="config-row">
+                <label style="min-width: 80px;">Class</label>
+                <input type="text" id="printClass" class="input" placeholder="Class name">
+            </div>
+            <div class="config-row">
+                <label style="min-width: 80px;">Teacher</label>
+                <input type="text" id="printTeacher" class="input" placeholder="Teacher name">
+            </div>
+            <div class="config-row">
+                <label style="min-width: 80px;">Date</label>
+                <input type="date" id="printDate" class="input">
+            </div>
+            <div class="config-row">
+                <label style="min-width: 80px;">Paper</label>
+                <select id="printPaper" class="select" style="flex:1;">
+                    <option value="A4">A4</option>
+                    <option value="A3">A3</option>
+                    <option value="Letter">Letter</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label style="min-width: 80px;">Layout</label>
+                <select id="printOrientation" class="select" style="flex:1;">
+                    <option value="landscape">Landscape</option>
+                    <option value="portrait">Portrait</option>
+                </select>
+            </div>
+            <div style="margin-top: var(--space-3); font-size: var(--text-xs); color: var(--fg-muted);">
+                <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+                    <input type="checkbox" id="printShowGrid" checked> Show grid lines
+                </label>
+                <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; margin-top: var(--space-1);">
+                    <input type="checkbox" id="printShowPosition" checked> Show position labels
+                </label>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('printModal')">Cancel</button>
+                <button class="btn btn-primary" id="printPreviewBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Print Preview
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap Modal -->
+    <div class="modal-overlay" id="heatmapModal">
+        <div class="modal" style="max-width: 700px;">
+            <h3 class="modal-title">Position Heatmap</h3>
+            
+            <div class="tabs" style="margin-bottom: var(--space-4);">
+                <button class="tab active" data-tab="heatmap-overall">Overall</button>
+                <button class="tab" data-tab="heatmap-tag">By Tag</button>
+                <button class="tab" data-tab="heatmap-student">By Student</button>
+            </div>
+            
+            <!-- Overall Tab -->
+            <div class="tab-content active" id="tab-heatmap-overall">
+                <p style="font-size: var(--text-sm); color: var(--fg-muted); margin-bottom: var(--space-3);">Heatmap shows seat occupancy frequency across history records</p>
+                <div id="heatmapOverallContainer" style="display: flex; justify-content: center; padding: var(--space-4); background: var(--bg-subtle); border-radius: var(--radius-md);">
+                    <div id="heatmapOverallGrid" style="display: grid; gap: 2px;"></div>
+                </div>
+                <div id="heatmapLegend" style="display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-3); font-size: var(--text-xs); color: var(--fg-muted);">
+                    <span>Less</span>
+                    <div style="display: flex; gap: 2px;">
+                        <div style="width: 16px; height: 16px; background: #e0f2fe; border-radius: 2px;"></div>
+                        <div style="width: 16px; height: 16px; background: #7dd3fc; border-radius: 2px;"></div>
+                        <div style="width: 16px; height: 16px; background: #38bdf8; border-radius: 2px;"></div>
+                        <div style="width: 16px; height: 16px; background: #0284c7; border-radius: 2px;"></div>
+                        <div style="width: 16px; height: 16px; background: #0c4a6e; border-radius: 2px;"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+            </div>
+            
+            <!-- Tag Tab -->
+            <div class="tab-content" id="tab-heatmap-tag">
+                <div class="config-row">
+                    <label style="min-width: 80px;">Tag Type</label>
+                    <select id="heatmapTagType" class="select" style="flex:1;">
+                        <option value="">Select tag type</option>
+                        <option value="vision">Vision</option>
+                        <option value="height">Height</option>
+                        <option value="behavior">Behavior</option>
+                        <option value="special">Special Needs</option>
+                        <option value="academic">Academic</option>
+                    </select>
+                </div>
+                <div class="config-row" id="heatmapTagValueRow" style="display: none;">
+                    <label style="min-width: 80px;">Tag Value</label>
+                    <select id="heatmapTagValue" class="select" style="flex:1;"></select>
+                </div>
+                <div id="heatmapTagStats" style="margin-top: var(--space-3); display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); font-size: var(--text-sm);">
+                        <div style="background: var(--bg-subtle); padding: var(--space-2); border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-weight: 600; color: var(--fg-base);" id="tagFrontCount">0</div>
+                            <div style="color: var(--fg-muted); font-size: 10px;">Front Row</div>
+                        </div>
+                        <div style="background: var(--bg-subtle); padding: var(--space-2); border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-weight: 600; color: var(--fg-base);" id="tagMiddleCount">0</div>
+                            <div style="color: var(--fg-muted); font-size: 10px;">Middle</div>
+                        </div>
+                        <div style="background: var(--bg-subtle); padding: var(--space-2); border-radius: var(--radius-sm); text-align: center;">
+                            <div style="font-weight: 600; color: var(--fg-base);" id="tagBackCount">0</div>
+                            <div style="color: var(--fg-muted); font-size: 10px;">Back Row</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="heatmapTagContainer" style="display: flex; justify-content: center; padding: var(--space-4); background: var(--bg-subtle); border-radius: var(--radius-md); margin-top: var(--space-3);">
+                    <div id="heatmapTagGrid" style="display: grid; gap: 2px;"></div>
+                </div>
+            </div>
+            
+            <!-- Student Tab -->
+            <div class="tab-content" id="tab-heatmap-student">
+                <div class="config-row">
+                    <label style="min-width: 80px;">Student</label>
+                    <select id="heatmapStudent" class="select" style="flex:1;">
+                        <option value="">Select student</option>
+                    </select>
+                </div>
+                <div id="heatmapStudentStats" style="margin-top: var(--space-3); display: none; font-size: var(--text-sm); color: var(--fg-muted);">
+                    <span id="studentHistoryCount">0</span> records found
+                </div>
+                <div id="heatmapStudentContainer" style="display: flex; justify-content: center; padding: var(--space-4); background: var(--bg-subtle); border-radius: var(--radius-md); margin-top: var(--space-3);">
+                    <div id="heatmapStudentGrid" style="display: grid; gap: 2px;"></div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('heatmapModal')">Close</button>
             </div>
         </div>
     </div>
@@ -3180,10 +3399,46 @@
             $('exportImageBtn').addEventListener('click', exportImage);
             $('exportExcelBtn').addEventListener('click', exportExcel);
 
+            // Analysis features
+            $('compareSnapshotBtn').addEventListener('click', openCompareModal);
+            $('printViewBtn').addEventListener('click', openPrintModal);
+            $('heatmapBtn').addEventListener('click', openHeatmapModal);
+            $('runCompareBtn').addEventListener('click', runCompare);
+            $('printPreviewBtn').addEventListener('click', generatePrintPreview);
+            
+            // Heatmap tag type change
+            $('heatmapTagType').addEventListener('change', handleTagTypeChange);
+            $('heatmapTagValue').addEventListener('change', loadTagHeatmap);
+            $('heatmapStudent').addEventListener('change', loadStudentHeatmap);
+            
+            // Print date default
+            $('printDate').value = new Date().toISOString().split('T')[0];
+
             // Modal close on overlay click
             elements.groupRotateModal.addEventListener('click', (e) => {
                 if (e.target === elements.groupRotateModal) {
                     closeModal('groupRotateModal');
+                }
+            });
+            
+            // Compare modal overlay click
+            $('compareModal').addEventListener('click', (e) => {
+                if (e.target === $('compareModal')) {
+                    closeModal('compareModal');
+                }
+            });
+            
+            // Print modal overlay click
+            $('printModal').addEventListener('click', (e) => {
+                if (e.target === $('printModal')) {
+                    closeModal('printModal');
+                }
+            });
+            
+            // Heatmap modal overlay click
+            $('heatmapModal').addEventListener('click', (e) => {
+                if (e.target === $('heatmapModal')) {
+                    closeModal('heatmapModal');
                 }
             });
 
@@ -3191,11 +3446,399 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     closeModal('groupRotateModal');
+                    closeModal('compareModal');
+                    closeModal('printModal');
+                    closeModal('heatmapModal');
                 }
             });
 
             // Load data
             loadInitialData();
+        }
+
+        // ==================== SNAPSHOT COMPARE FUNCTIONS ====================
+        function openCompareModal() {
+            // Populate select options with history
+            const optionsHTML = '<option value="">Select snapshot</option>' + 
+                state.history.map(h => {
+                    const date = new Date(h.timestamp);
+                    const timeStr = date.toLocaleString('zh-CN', {
+                        month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    return `<option value="${h.id}">${timeStr} - ${h.rows}×${h.cols} (${h.student_count} students)</option>`;
+                }).join('');
+            
+            $('compareSelect1').innerHTML = optionsHTML;
+            $('compareSelect2').innerHTML = optionsHTML;
+            $('compareResult').style.display = 'none';
+            openModal('compareModal');
+        }
+
+        async function runCompare() {
+            const id1 = $('compareSelect1').value;
+            const id2 = $('compareSelect2').value;
+            
+            if (!id1 || !id2) {
+                showToast('Please select two snapshots', 'error');
+                return;
+            }
+            
+            if (id1 === id2) {
+                showToast('Please select different snapshots', 'error');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                const data = await apiCall('/api/history/compare', 'POST', { id1, id2 });
+                
+                // Update summary
+                $('compareMoved').textContent = data.summary.moved;
+                $('compareAdded').textContent = data.summary.added;
+                $('compareRemoved').textContent = data.summary.removed;
+                
+                // Render changes list
+                const changesHTML = data.changes.map(c => {
+                    const icons = {
+                        moved: '↔️',
+                        added: '➕',
+                        removed: '➖'
+                    };
+                    const colors = {
+                        moved: 'var(--color-warning)',
+                        added: 'var(--color-success)',
+                        removed: 'var(--color-error)'
+                    };
+                    const fromStr = c.from ? `R${c.from[0]+1}C${c.from[1]+1}` : '-';
+                    const toStr = c.to ? `R${c.to[0]+1}C${c.to[1]+1}` : '-';
+                    return `<div style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); background: var(--bg-subtle); border-radius: var(--radius-sm); margin-bottom: 4px; border-left: 3px solid ${colors[c.type]};">
+                        <span>${icons[c.type]}</span>
+                        <span style="font-weight: 500;">${c.student}</span>
+                        <span style="color: var(--fg-muted); font-size: 11px;">${fromStr} → ${toStr}</span>
+                    </div>`;
+                }).join('');
+                
+                $('compareChanges').innerHTML = changesHTML || '<div style="color: var(--fg-muted); text-align: center;">No changes found</div>';
+                $('compareResult').style.display = 'block';
+                
+                showToast(`Found ${data.changes.length} changes`, 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ==================== PRINT VIEW FUNCTIONS ====================
+        function openPrintModal() {
+            openModal('printModal');
+        }
+
+        async function generatePrintPreview() {
+            const title = $('printTitle').value || 'Classroom Seating Chart';
+            const className = $('printClass').value || '';
+            const teacher = $('printTeacher').value || '';
+            const date = $('printDate').value || new Date().toISOString().split('T')[0];
+            const showGrid = $('printShowGrid').checked;
+            const showPosition = $('printShowPosition').checked;
+            
+            closeModal('printModal');
+            
+            // Create print window
+            const printWindow = window.open('', '_blank');
+            
+            try {
+                const data = await apiCall(`/api/print/preview?title=${encodeURIComponent(title)}&teacher=${encodeURIComponent(teacher)}&class=${encodeURIComponent(className)}&date=${date}`);
+                
+                const printHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${title}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20mm;
+            background: white;
+            color: #1a1a1a;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .print-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .print-subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        .print-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        .print-grid {
+            display: grid;
+            grid-template-columns: repeat(${data.cols}, 1fr);
+            gap: ${showGrid ? '2px' : '0'};
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        .print-seat {
+            aspect-ratio: 1.2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: ${showGrid ? '1px solid #ddd' : 'none'};
+            background: white;
+            font-size: 11px;
+            padding: 4px;
+        }
+        .print-seat.empty {
+            background: #fafafa;
+            color: #999;
+        }
+        .print-seat-name {
+            font-weight: 600;
+            text-align: center;
+            word-break: break-all;
+        }
+        .print-seat-pos {
+            font-size: 9px;
+            color: #999;
+            margin-top: 2px;
+        }
+        .print-podium {
+            text-align: center;
+            padding: 12px;
+            background: #333;
+            color: white;
+            font-weight: 600;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+        .print-footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        @media print {
+            body { padding: 15mm; }
+            .print-grid { gap: 1px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-header">
+        <div class="print-title">${title}</div>
+        <div class="print-subtitle">${className ? className + ' - ' : ''}Classroom Seating Arrangement</div>
+    </div>
+    
+    <div class="print-info">
+        <span>Teacher: ${teacher || '-'}</span>
+        <span>Date: ${date}</span>
+        <span>Students: ${data.student_count} / ${data.total_seats} seats</span>
+    </div>
+    
+    <div class="print-podium">PODIUM</div>
+    
+    <div class="print-grid">
+        ${Array.from({length: data.rows}, (_, i) => 
+            Array.from({length: data.cols}, (_, j) => {
+                const student = data.seats[i]?.[j] || '';
+                return `<div class="print-seat ${student ? '' : 'empty'}">
+                    <div class="print-seat-name">${student || 'Empty'}</div>
+                    ${showPosition ? `<div class="print-seat-pos">R${i+1} C${j+1}</div>` : ''}
+                </div>`;
+            }).join('')
+        ).join('')}
+    </div>
+    
+    <div class="print-footer">
+        Generated by PyRanSeat - ${new Date().toLocaleString()}
+    </div>
+</body>
+</html>`;
+                
+                printWindow.document.write(printHTML);
+                printWindow.document.close();
+                
+                // Auto print after load
+                printWindow.onload = function() {
+                    printWindow.print();
+                };
+                
+                showToast('Print preview generated', 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+                printWindow.close();
+            }
+        }
+
+        // ==================== HEATMAP FUNCTIONS ====================
+        function openHeatmapModal() {
+            // Populate student select
+            const studentOptions = '<option value="">Select student</option>' + 
+                state.students.map(s => `<option value="${s}">${s}</option>`).join('');
+            $('heatmapStudent').innerHTML = studentOptions;
+            
+            // Reset tabs
+            document.querySelectorAll('#heatmapModal .tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('#heatmapModal .tab[data-tab="heatmap-overall"]').classList.add('active');
+            document.querySelectorAll('#heatmapModal .tab-content').forEach(c => c.classList.remove('active'));
+            $('tab-heatmap-overall').classList.add('active');
+            
+            // Load overall heatmap
+            loadOverallHeatmap();
+            openModal('heatmapModal');
+        }
+
+        async function loadOverallHeatmap() {
+            try {
+                const data = await apiCall('/api/heatmap/position?limit=20');
+                renderHeatmapGrid('heatmapOverallGrid', data.rows, data.cols, data.position_counts, data.max_count);
+            } catch (error) {
+                console.error('Failed to load heatmap:', error);
+            }
+        }
+
+        function handleTagTypeChange() {
+            const tagType = $('heatmapTagType').value;
+            const valueSelect = $('heatmapTagValue');
+            const valueRow = $('heatmapTagValueRow');
+            
+            if (!tagType) {
+                valueRow.style.display = 'none';
+                $('heatmapTagStats').style.display = 'none';
+                return;
+            }
+            
+            // Get tag values from state
+            const tagOptions = {
+                vision: ['normal', 'nearsighted', 'strong_nearsighted'],
+                height: ['short', 'medium', 'tall'],
+                behavior: ['normal', 'needs_attention', 'quiet', 'active'],
+                special: ['none', 'front_row', 'wheelchair', 'hearing_impairment'],
+                academic: ['excellent', 'good', 'average', 'needs_help']
+            };
+            
+            const tagNames = {
+                vision: { normal: 'Normal', nearsighted: 'Nearsighted', strong_nearsighted: 'Strongly Nearsighted' },
+                height: { short: 'Short', medium: 'Medium', tall: 'Tall' },
+                behavior: { normal: 'Normal', needs_attention: 'Needs Attention', quiet: 'Quiet', active: 'Active' },
+                special: { none: 'None', front_row: 'Front Row', wheelchair: 'Wheelchair', hearing_impairment: 'Hearing Imp.' },
+                academic: { excellent: 'Excellent', good: 'Good', average: 'Average', needs_help: 'Needs Help' }
+            };
+            
+            const options = tagOptions[tagType] || [];
+            valueSelect.innerHTML = '<option value="">All</option>' + 
+                options.map(v => `<option value="${v}">${tagNames[tagType][v] || v}</option>`).join('');
+            
+            valueRow.style.display = 'flex';
+            loadTagHeatmap();
+        }
+
+        async function loadTagHeatmap() {
+            const tagType = $('heatmapTagType').value;
+            const tagValue = $('heatmapTagValue').value;
+            
+            if (!tagType) return;
+            
+            try {
+                const url = `/api/heatmap/tags?tag_type=${tagType}${tagValue ? '&tag_value=' + tagValue : ''}`;
+                const data = await apiCall(url);
+                
+                // Update stats
+                $('tagFrontCount').textContent = data.distribution.front_row;
+                $('tagMiddleCount').textContent = data.distribution.middle_row;
+                $('tagBackCount').textContent = data.distribution.back_row;
+                $('heatmapTagStats').style.display = 'block';
+                
+                // Create position map for highlighting
+                const positionMap = {};
+                Object.entries(data.current_positions).forEach(([student, pos]) => {
+                    positionMap[`${pos[0]},${pos[1]}`] = student;
+                });
+                
+                // Render heatmap with highlighted positions
+                renderHeatmapGrid('heatmapTagGrid', data.rows, data.cols, positionMap, 1, true);
+            } catch (error) {
+                console.error('Failed to load tag heatmap:', error);
+            }
+        }
+
+        async function loadStudentHeatmap() {
+            const student = $('heatmapStudent').value;
+            
+            if (!student) {
+                $('heatmapStudentStats').style.display = 'none';
+                return;
+            }
+            
+            try {
+                const data = await apiCall(`/api/heatmap/student/${encodeURIComponent(student)}`);
+                
+                $('studentHistoryCount').textContent = data.total_records;
+                $('heatmapStudentStats').style.display = 'block';
+                
+                // Render heatmap
+                renderHeatmapGrid('heatmapStudentGrid', data.rows, data.cols, data.position_counts, Math.max(...data.position_counts.flat(), 1));
+            } catch (error) {
+                console.error('Failed to load student heatmap:', error);
+            }
+        }
+
+        function renderHeatmapGrid(containerId, rows, cols, data, maxValue, isHighlight = false) {
+            const container = $(containerId);
+            container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            
+            const colors = ['#f0f9ff', '#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7', '#0369a1', '#075985', '#0c4a6e'];
+            
+            let html = '';
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    let bgColor = '#f5f5f5';
+                    let content = '';
+                    
+                    if (isHighlight) {
+                        // Highlight mode - show students with matching tag
+                        const key = `${i},${j}`;
+                        if (data[key]) {
+                            bgColor = '#38bdf8';
+                            content = data[key].substring(0, 3);
+                        }
+                    } else {
+                        // Heat mode - show intensity
+                        const value = data[i]?.[j] || 0;
+                        if (value > 0 && maxValue > 0) {
+                            const intensity = value / maxValue;
+                            const colorIndex = Math.min(Math.floor(intensity * (colors.length - 1)), colors.length - 1);
+                            bgColor = colors[colorIndex];
+                            content = value;
+                        }
+                    }
+                    
+                    html += `<div style="width: 40px; height: 32px; background: ${bgColor}; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 10px; font-weight: 500; color: ${isHighlight && bgColor !== '#f5f5f5' ? 'white' : '#333'};">${content}</div>`;
+                }
+            }
+            
+            container.innerHTML = html;
         }
 
         // Start

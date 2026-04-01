@@ -1638,6 +1638,388 @@ def move_seat():
     })
 
 
+# ==================== Snapshot Compare API ====================
+
+@app.route('/api/history/compare', methods=['POST'])
+def compare_history():
+    """Compare two history snapshots and highlight changes"""
+    try:
+        payload = request.get_json()
+        id1 = payload.get('id1')
+        id2 = payload.get('id2')
+        
+        if not id1 or not id2:
+            return jsonify({'success': False, 'error': 'Two history IDs required'}), 400
+        
+        with data_lock:
+            history = load_history()
+        
+        record1 = None
+        record2 = None
+        
+        for record in history:
+            if record['id'] == id1:
+                record1 = record
+            if record['id'] == id2:
+                record2 = record
+        
+        if not record1 or not record2:
+            return jsonify({'success': False, 'error': 'One or both records not found'}), 404
+        
+        # Compare seats
+        seats1 = record1['seats']
+        seats2 = record2['seats']
+        rows = max(record1['rows'], record2['rows'])
+        cols = max(record1['cols'], record2['cols'])
+        
+        changes = []
+        
+        # Find all students and their positions
+        students_in_1 = {}  # student -> position
+        students_in_2 = {}
+        
+        for r in range(record1['rows']):
+            for c in range(record1['cols']):
+                student = seats1[r][c]
+                if student:
+                    students_in_1[student] = (r, c)
+        
+        for r in range(record2['rows']):
+            for c in range(record2['cols']):
+                student = seats2[r][c]
+                if student:
+                    students_in_2[student] = (r, c)
+        
+        # Find changes
+        all_students = set(students_in_1.keys()) | set(students_in_2.keys())
+        
+        for student in all_students:
+            pos1 = students_in_1.get(student)
+            pos2 = students_in_2.get(student)
+            
+            if pos1 is None and pos2 is not None:
+                changes.append({
+                    'student': student,
+                    'type': 'added',
+                    'from': None,
+                    'to': list(pos2)
+                })
+            elif pos1 is not None and pos2 is None:
+                changes.append({
+                    'student': student,
+                    'type': 'removed',
+                    'from': list(pos1),
+                    'to': None
+                })
+            elif pos1 != pos2:
+                changes.append({
+                    'student': student,
+                    'type': 'moved',
+                    'from': list(pos1),
+                    'to': list(pos2)
+                })
+        
+        return jsonify({
+            'success': True,
+            'record1': {
+                'id': record1['id'],
+                'timestamp': record1['timestamp'],
+                'action': record1['action'],
+                'rows': record1['rows'],
+                'cols': record1['cols'],
+                'seats': record1['seats']
+            },
+            'record2': {
+                'id': record2['id'],
+                'timestamp': record2['timestamp'],
+                'action': record2['action'],
+                'rows': record2['rows'],
+                'cols': record2['cols'],
+                'seats': record2['seats']
+            },
+            'changes': changes,
+            'summary': {
+                'total_changes': len(changes),
+                'moved': len([c for c in changes if c['type'] == 'moved']),
+                'added': len([c for c in changes if c['type'] == 'added']),
+                'removed': len([c for c in changes if c['type'] == 'removed'])
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+# ==================== Print View API ====================
+
+@app.route('/api/print/preview', methods=['GET'])
+def get_print_preview():
+    """Get print-optimized seating data"""
+    with data_lock:
+        data = load_data()
+    
+    # Get optional title from query params
+    title = request.args.get('title', 'Classroom Seating Chart')
+    teacher_name = request.args.get('teacher', '')
+    class_name = request.args.get('class', '')
+    date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+    
+    return jsonify({
+        'success': True,
+        'title': title,
+        'teacher': teacher_name,
+        'class_name': class_name,
+        'date': date_str,
+        'rows': data['rows'],
+        'cols': data['cols'],
+        'seats': data['seats'],
+        'students': data['students'],
+        'student_count': len([s for s in data['students'] if s]),
+        'total_seats': data['rows'] * data['cols'],
+        'layout_mode': data.get('layout_mode', 'single'),
+        'desk_pairs': data.get('desk_pairs', [])
+    })
+
+
+@app.route('/api/print/config', methods=['POST'])
+def save_print_config():
+    """Save print configuration"""
+    try:
+        payload = request.get_json()
+        # For now, just validate and return success
+        # In future, this could save to a config file
+        
+        config = {
+            'title': payload.get('title', 'Classroom Seating Chart'),
+            'teacher': payload.get('teacher', ''),
+            'class_name': payload.get('class', ''),
+            'paper_size': payload.get('paper_size', 'A4'),
+            'orientation': payload.get('orientation', 'portrait'),
+            'show_grid': payload.get('show_grid', True),
+            'show_position': payload.get('show_position', True),
+            'font_size': payload.get('font_size', 'medium'),
+            'header_style': payload.get('header_style', 'standard')
+        }
+        
+        return jsonify({
+            'success': True,
+            'config': config
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+# ==================== Heatmap API ====================
+
+@app.route('/api/heatmap/position', methods=['GET'])
+def get_position_heatmap():
+    """Get student position distribution heatmap data"""
+    with data_lock:
+        history = load_history()
+        data = load_data()
+    
+    # Get filter options
+    student_filter = request.args.get('student', None)
+    tag_filter = request.args.get('tag', None)
+    limit = int(request.args.get('limit', 20))
+    
+    # Build position frequency matrix
+    rows = data['rows']
+    cols = data['cols']
+    position_counts = [[0 for _ in range(cols)] for _ in range(rows)]
+    
+    # Also track current position
+    current_positions = {}
+    for r in range(rows):
+        for c in range(cols):
+            student = data['seats'][r][c]
+            if student:
+                current_positions[student] = (r, c)
+    
+    # Analyze history
+    student_history = {}  # student -> list of positions
+    
+    for record in history[:limit]:
+        record_rows = record['rows']
+        record_cols = record['cols']
+        record_seats = record['seats']
+        
+        for r in range(min(rows, record_rows)):
+            for c in range(min(cols, record_cols)):
+                student = record_seats[r][c] if r < len(record_seats) and c < len(record_seats[r]) else None
+                if student:
+                    # Apply filters
+                    if student_filter and student != student_filter:
+                        continue
+                    if tag_filter:
+                        student_tags = data.get('student_tags', {}).get(student, {})
+                        if tag_filter not in student_tags.values():
+                            continue
+                    
+                    position_counts[r][c] += 1
+                    
+                    if student not in student_history:
+                        student_history[student] = []
+                    student_history[student].append((r, c))
+    
+    # Calculate statistics
+    total_records = min(len(history), limit)
+    max_count = max(max(row) for row in position_counts) if total_records > 0 else 0
+    
+    # Find hotspots (most frequently occupied seats)
+    hotspots = []
+    for r in range(rows):
+        for c in range(cols):
+            if position_counts[r][c] > 0:
+                hotspots.append({
+                    'position': [r, c],
+                    'count': position_counts[r][c],
+                    'percentage': round(position_counts[r][c] / max(total_records, 1) * 100, 1)
+                })
+    
+    hotspots.sort(key=lambda x: x['count'], reverse=True)
+    
+    return jsonify({
+        'success': True,
+        'rows': rows,
+        'cols': cols,
+        'position_counts': position_counts,
+        'max_count': max_count,
+        'total_records': total_records,
+        'hotspots': hotspots[:10],
+        'current_positions': current_positions,
+        'student_history': student_history
+    })
+
+
+@app.route('/api/heatmap/tags', methods=['GET'])
+def get_tag_heatmap():
+    """Get tag distribution heatmap (e.g., nearsighted students positions)"""
+    with data_lock:
+        data = load_data()
+        history = load_history()
+    
+    tag_type = request.args.get('tag_type', None)  # vision, height, behavior, special, academic
+    tag_value = request.args.get('tag_value', None)
+    
+    if not tag_type:
+        return jsonify({'success': False, 'error': 'tag_type parameter required'}), 400
+    
+    rows = data['rows']
+    cols = data['cols']
+    student_tags = data.get('student_tags', {})
+    
+    # Find students with matching tag
+    matching_students = []
+    for student, tags in student_tags.items():
+        if tag_type in tags:
+            if tag_value is None or tags[tag_type] == tag_value:
+                matching_students.append(student)
+    
+    # Build current position map for matching students
+    current_positions = {}
+    for r in range(rows):
+        for c in range(cols):
+            student = data['seats'][r][c]
+            if student in matching_students:
+                current_positions[student] = (r, c)
+    
+    # Calculate distribution statistics
+    front_row_count = 0
+    back_row_count = 0
+    middle_count = 0
+    left_count = 0
+    right_count = 0
+    center_count = 0
+    
+    front_threshold = rows // 3
+    back_threshold = rows * 2 // 3
+    left_threshold = cols // 3
+    right_threshold = cols * 2 // 3
+    
+    for student, (r, c) in current_positions.items():
+        if r < front_threshold:
+            front_row_count += 1
+        elif r >= back_threshold:
+            back_row_count += 1
+        else:
+            middle_count += 1
+        
+        if c < left_threshold:
+            left_count += 1
+        elif c >= right_threshold:
+            right_count += 1
+        else:
+            center_count += 1
+    
+    return jsonify({
+        'success': True,
+        'tag_type': tag_type,
+        'tag_value': tag_value,
+        'matching_students': matching_students,
+        'total_matching': len(matching_students),
+        'current_positions': {s: list(p) for s, p in current_positions.items()},
+        'distribution': {
+            'front_row': front_row_count,
+            'middle_row': middle_count,
+            'back_row': back_row_count,
+            'left_col': left_count,
+            'center_col': center_count,
+            'right_col': right_count
+        },
+        'rows': rows,
+        'cols': cols
+    })
+
+
+@app.route('/api/heatmap/student/<student_name>', methods=['GET'])
+def get_student_position_history(student_name):
+    """Get position history for a specific student"""
+    with data_lock:
+        history = load_history()
+        data = load_data()
+    
+    rows = data['rows']
+    cols = data['cols']
+    position_counts = [[0 for _ in range(cols)] for _ in range(rows)]
+    position_history = []
+    
+    for record in history:
+        record_rows = record['rows']
+        record_cols = record['cols']
+        record_seats = record['seats']
+        
+        for r in range(record_rows):
+            for c in range(record_cols):
+                if r < len(record_seats) and c < len(record_seats[r]):
+                    if record_seats[r][c] == student_name:
+                        position_counts[r][c] += 1
+                        position_history.append({
+                            'timestamp': record['timestamp'],
+                            'action': record['action'],
+                            'position': [r, c]
+                        })
+                        break
+    
+    # Calculate current position
+    current_position = None
+    for r in range(rows):
+        for c in range(cols):
+            if data['seats'][r][c] == student_name:
+                current_position = [r, c]
+                break
+    
+    return jsonify({
+        'success': True,
+        'student': student_name,
+        'current_position': current_position,
+        'position_counts': position_counts,
+        'position_history': position_history,
+        'total_records': len(position_history),
+        'rows': rows,
+        'cols': cols
+    })
+
+
 if __name__ == '__main__':
     import os
     
