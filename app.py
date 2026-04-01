@@ -11,7 +11,7 @@ import random
 import threading
 import copy
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 
 app = Flask(__name__)
 
@@ -499,6 +499,15 @@ def clean_constraints_for_students(constraints, students):
 def index():
     """Home page"""
     return render_template('index.html')
+
+
+@app.route('/favicon.png')
+def favicon():
+    """Serve favicon"""
+    favicon_path = os.path.join(get_app_dir(), 'icon.png')
+    if os.path.exists(favicon_path):
+        return send_file(favicon_path, mimetype='image/png')
+    return '', 404
 
 
 @app.route('/api/seats', methods=['GET'])
