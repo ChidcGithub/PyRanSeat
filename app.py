@@ -889,6 +889,182 @@ def delete_constraint():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 
+@app.route('/api/constraints/batch', methods=['POST'])
+def batch_add_constraints():
+    """Batch add constraints with various patterns"""
+    try:
+        payload = request.get_json()
+        pattern = payload.get('pattern')  # 'pairs', 'group_avoid', 'gender', 'custom'
+        constraint_type = payload.get('type', 'avoid')  # 'avoid' or 'together'
+        students = payload.get('students', [])  # List of student names
+        params = payload.get('params', {})  # Additional parameters
+        
+        with data_lock:
+            data = load_data()
+            all_students = data['students']
+            constraints = data.get('constraints', [])
+            added_count = 0
+            skipped_count = 0
+            new_constraints = []
+            
+            if pattern == 'pairs':
+                # Set constraints for consecutive pairs in the students list
+                # e.g., ['A', 'B', 'C', 'D'] -> A-B, C-D
+                for i in range(0, len(students) - 1, 2):
+                    student_a = students[i]
+                    student_b = students[i + 1] if i + 1 < len(students) else None
+                    
+                    if student_b:
+                        # Check if constraint already exists
+                        exists = any(
+                            (c['studentA'] == student_a and c['studentB'] == student_b) or
+                            (c['studentA'] == student_b and c['studentB'] == student_a)
+                            for c in constraints
+                        )
+                        
+                        if not exists:
+                            new_constraints.append({
+                                'studentA': student_a,
+                                'studentB': student_b,
+                                'type': constraint_type
+                            })
+                            added_count += 1
+                        else:
+                            skipped_count += 1
+            
+            elif pattern == 'group_avoid':
+                # All students in the list should avoid each other
+                # e.g., ['A', 'B', 'C'] -> A-B, A-C, B-C (all avoid)
+                for i in range(len(students)):
+                    for j in range(i + 1, len(students)):
+                        student_a = students[i]
+                        student_b = students[j]
+                        
+                        # Check if constraint already exists
+                        exists = any(
+                            ((c['studentA'] == student_a and c['studentB'] == student_b) or
+                             (c['studentA'] == student_b and c['studentB'] == student_a)) and
+                            c['type'] == constraint_type
+                            for c in constraints
+                        )
+                        
+                        if not exists:
+                            new_constraints.append({
+                                'studentA': student_a,
+                                'studentB': student_b,
+                                'type': constraint_type
+                            })
+                            added_count += 1
+                        else:
+                            skipped_count += 1
+            
+            elif pattern == 'chain':
+                # Chain constraints: A-B, B-C, C-D
+                for i in range(len(students) - 1):
+                    student_a = students[i]
+                    student_b = students[i + 1]
+                    
+                    exists = any(
+                        (c['studentA'] == student_a and c['studentB'] == student_b) or
+                        (c['studentA'] == student_b and c['studentB'] == student_a)
+                        for c in constraints
+                    )
+                    
+                    if not exists:
+                        new_constraints.append({
+                            'studentA': student_a,
+                            'studentB': student_b,
+                            'type': constraint_type
+                        })
+                        added_count += 1
+                    else:
+                        skipped_count += 1
+            
+            elif pattern == 'one_to_many':
+                # One student to many others
+                # params.center is the center student, students are the targets
+                center = params.get('center')
+                if center:
+                    for student in students:
+                        if student == center:
+                            continue
+                        
+                        exists = any(
+                            ((c['studentA'] == center and c['studentB'] == student) or
+                             (c['studentA'] == student and c['studentB'] == center)) and
+                            c['type'] == constraint_type
+                            for c in constraints
+                        )
+                        
+                        if not exists:
+                            new_constraints.append({
+                                'studentA': center,
+                                'studentB': student,
+                                'type': constraint_type
+                            })
+                            added_count += 1
+                        else:
+                            skipped_count += 1
+            
+            elif pattern == 'custom_pairs':
+                # Custom pairs: list of [studentA, studentB] pairs
+                pairs = params.get('pairs', [])
+                for pair in pairs:
+                    if len(pair) >= 2:
+                        student_a, student_b = pair[0], pair[1]
+                        
+                        exists = any(
+                            (c['studentA'] == student_a and c['studentB'] == student_b) or
+                            (c['studentA'] == student_b and c['studentB'] == student_a)
+                            for c in constraints
+                        )
+                        
+                        if not exists:
+                            new_constraints.append({
+                                'studentA': student_a,
+                                'studentB': student_b,
+                                'type': constraint_type
+                            })
+                            added_count += 1
+                        else:
+                            skipped_count += 1
+            
+            # Add all new constraints
+            constraints.extend(new_constraints)
+            data['constraints'] = constraints
+            save_data(data)
+        
+        return jsonify({
+            'success': True,
+            'constraints': constraints,
+            'added': added_count,
+            'skipped': skipped_count,
+            'students': data['students']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/constraints/batch/clear', methods=['POST'])
+def clear_all_constraints():
+    """Clear all constraints"""
+    try:
+        with data_lock:
+            data = load_data()
+            old_count = len(data.get('constraints', []))
+            data['constraints'] = []
+            save_data(data)
+        
+        return jsonify({
+            'success': True,
+            'cleared': old_count,
+            'constraints': [],
+            'students': data['students']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
 # ==================== Rotation API ====================
 
 @app.route('/api/row_swap', methods=['POST'])
