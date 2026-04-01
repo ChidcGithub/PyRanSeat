@@ -1620,6 +1620,8 @@ def move_seat():
 
 
 if __name__ == '__main__':
+    import os
+    
     print("=" * 50)
     print("PyRanSeat - Classroom Seating Arrangement Tool")
     print("=" * 50)
@@ -1627,4 +1629,14 @@ if __name__ == '__main__':
     print(f"Data file: {DATA_FILE}")
     print(f"History file: {HISTORY_FILE}")
     print("=" * 50)
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    
+    # Use waitress for production, Flask dev server for development
+    debug_mode = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes')
+    
+    if debug_mode:
+        print("Running in DEBUG mode (Flask development server)")
+        app.run(debug=True, host='127.0.0.1', port=5000)
+    else:
+        from waitress import serve
+        print("Running in PRODUCTION mode (Waitress WSGI server)")
+        serve(app, host='127.0.0.1', port=5000)
